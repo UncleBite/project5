@@ -52,3 +52,9 @@ message UCommunicate{
   repeated UPackageDelivered udelivered = 3;
   repeated int64 acks = 4;
 }
+
+
+message AUConnect{
+  required int64 worldid = 1;
+
+}

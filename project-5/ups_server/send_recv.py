@@ -70,11 +70,14 @@ def recv_from_world(Message, world_fd):
 def recv_from_amazon(Message, amazon_fd):
     var_int_buff = []
     while True:
-        buf = amazon_fd.recv(1)
-        var_int_buff += buf
-        msg_len, new_pos = _DecodeVarint32(var_int_buff, 0)
-        if new_pos != 0:
-            break
+        try:
+            buf = amazon_fd.recv(1)
+            var_int_buff += buf
+            msg_len, new_pos = _DecodeVarint32(var_int_buff, 0)
+            if new_pos != 0:
+                break
+        except:
+            continue
     whole_message = amazon_fd.recv(msg_len)
     Message.ParseFromString(whole_message)
     print("message received from AMAZON is:")

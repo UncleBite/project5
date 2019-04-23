@@ -6,7 +6,7 @@ import time
 import world_ups_pb2
 import ups_amazon_pb2
 from handle_message import recv_world_msg, recv_amazon_msg
-from send_recv import send_to_world, recv_from_world
+from send_recv import send_to_world, recv_from_world, send_to_amazon
 #from fill_message import fill_ups_connect, fill_ua_connect
 
 # db_host = "vcm-3838.vm.duke.edu"
@@ -17,7 +17,7 @@ db_host = "localhost"
 #world_host ="vcm-8250.vm.duke.edu"
 #world_host = "152.3.53.20"
 world_host = "localhost"
-amazon_host = "10.197.144.137"
+amazon_host = "vcm-8230.vm.duke.edu"
 # db_port = "6666"
 db_port = "5432"
 amz_conn_port = 55559
@@ -105,15 +105,18 @@ def init_world(world_fd, db_cur, db_conn):
 # ----------------------------------------------------------------------------------
 """ 2. establish connection with Amazon """
 # ----------------------------------------------------------------------------------
-def connect_amazon():
+def connect_amazon(world_id):
     amazon_fd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # connect to the server on local computer
     while 1:
         try:
             #amazon_fd.connect(('10.0.0.243', 12345))
             #amazon_fd.connect((world_host, 5678))
-            amazon_fd.connect((amazon_host, 55560))
+            amazon_fd.connect((amazon_host, 55555))
             print("!!!!!")
+            message = ups_amazon_pb2.AUConnect()
+            message.worldid = world_id
+            send_to_amazon(message, amazon_fd)
             break
         except (ConnectionRefusedError, ConnectionResetError,
                 ConnectionError, ConnectionAbortedError) as error:
@@ -137,7 +140,7 @@ def main():
     world_id =  init_world(world_fd, db_cur, db_conn)
     print("waiting for amazon setting up")
     time.sleep(6)
-    amazon_fd = connect_amazon()
+    amazon_fd = connect_amazon(world_id)
     thread1 = threading.Thread(target=recv_amazon_msg, args=(world_id, amazon_fd, world_fd))
     thread1.start()
     thread2 = threading.Thread(target=recv_world_msg, args=(world_id, amazon_fd, world_fd))

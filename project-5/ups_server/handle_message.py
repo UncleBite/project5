@@ -6,12 +6,13 @@ import world_ups_pb2
 import ups_amazon_pb2
 from send_recv import disconnect, get_seqnum, send_ack_to_amazon, send_ack_to_world, send_to_world, send_to_amazon, recv_from_world, recv_from_amazon
 
-
+mutex = threading.Lock()
 db_host = "localhost"
 #db_port = "6666"
 db_port = "5432"
 
 def truckid_selector():
+    mutex.acquire()
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'") 
     db_cur = db_conn.cursor()
@@ -20,6 +21,7 @@ def truckid_selector():
     if row is not None:
         db_cur.execute("UPDATE truck SET status ='E' WHERE truckid = '{}';".format(str(row[2])))
         db_conn.commit()
+        mutex.release()
         return row[2]
     '''
     db_cur.execute("SELECT * from truck WHERE status = {}").format("O")
@@ -50,6 +52,7 @@ def truckid_selector():
         db_conn.commit()
         return row["truckid"]
     '''
+    mutex.release()
     return -1
 
 def completions_handler(completions, world_id, amazon_fd, world_fd):
@@ -59,6 +62,7 @@ def completions_handler(completions, world_id, amazon_fd, world_fd):
 
     UCommu = ups_amazon_pb2.UCommunicate()
     print("in completions_handler")
+    mutex.acquire()
     for completion in completions:
         if completion.status == "ArrivedAtWarehouse":
             UArrivedAtWarehouse = UCommu.uarrived.add()
@@ -93,14 +97,17 @@ def completions_handler(completions, world_id, amazon_fd, world_fd):
    #     if UPackageDelivered.seqnum in amazon_ack_list:
    #         break
     db_conn.commit()
+    mutex.release()
     print("completions_handler finished")
-
+    return
+    
 def delivered_handler(deliveries, world_id, amazon_fd, world_fd):
     UCommu = ups_amazon_pb2.UCommunicate()
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'") 
     db_cur = db_conn.cursor()
     print("in delivered_handler")
+    mutex.acquire()
     for delivery in deliveries:
         UPackageDelivered = UCommu.udelivered.add()
         UPackageDelivered.packageid = deliver.packageid
@@ -118,25 +125,31 @@ def delivered_handler(deliveries, world_id, amazon_fd, world_fd):
         db_cur.execute("update truck set location_x = '"+ str(package_x)+ "', location_y = ' "
                         + str(package_y) + "'where truckid = '" + str(deliver.truckid) +
                         "' and worldid = '" + str(world_id) + "')")
-    #while True:
+        #while True:
     send_to_amazon(UCommu, amazon)
     #    if UPackageDelivered.seqnum in amazon_ack_list:
     #        break
     db_conn.commit()
+    mutex.release()
     print("delivered_handler finished")
-
+    return
 
 def error_handler(errors, world_id, amazon_fd, world_fd):
     print("in error_handler")
     for error in errors:
         print("ERROR-----")
         print(error.err,str(error.originseqnum),str(error.seqnum))
-
+    return
+        
 def package_db_handle(orderplaced_handle_list, world_id, amazon_fd, world_fd,truckid):
     print("in package_db_handle")
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'") 
     db_cur = db_conn.cursor()
+    print("****************")
+    print(len(orderplaced_handle_list))
+    print("****************")
+    mutex.acquire()
     for order in orderplaced_handle_list:
         userid = 'unknown'
         if order.HasField("UPSuserid"):
@@ -147,14 +160,20 @@ def package_db_handle(orderplaced_handle_list, world_id, amazon_fd, world_fd,tru
         location_x = order.x
         location_y = order.y
         packageid = order.packageid
-        tmp = """update truck SET packageid = %s where worldid= %s,truckid= %s"""
-        db_cur.execute(tmp,(str(packageid),str(world_id),str(truckid)))
+        tmp1= """update truck SET packageid = %s where worldid= %s,truckid= %s;"""
+        print("0")
+        db_cur.execute(tmp1,(str(packageid),str(world_id),str(truckid)))
+        print("1")
         for product in order.things:
             tmp = """insert into package (worldid, name, status, product_name, description, count, location_x,location_y, packageid, truckid) values(%s,%s, 'C', %s ,%s ,%s,%s,%s ,%s ,%s) """
             db_cur.execute(tmp,(str(world_id),str(userid), str(product.name),str(product.description),int(product.count),str(location_x),str(location_y),str(packageid),str(truckid)))
+            print("2")
+    print("3")
     db_conn.commit()
+    mutex.release()
     print("in package_db_handle")
-
+    return
+    
 def orderplaced_handler(orderplaced_handle_list, world_id, amazon_fd, world_fd, truck_list):
     print("in orderplaced_handler")
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
@@ -163,6 +182,7 @@ def orderplaced_handler(orderplaced_handle_list, world_id, amazon_fd, world_fd, 
     UCommands = world_ups_pb2.UCommands()
     UCommu = ups_amazon_pb2.UCommunicate()
     package_db_handle(orderplaced_handle_list,world_id, amazon_fd,world_fd,truck_list)
+    mutex.acquire()
     for i in  range (0, len(orderplaced_handle_list)):
         UGoPickup = UCommands.pickups.add()
         UGoPickup.truckid = int(truck_list[i])
@@ -188,14 +208,16 @@ def orderplaced_handler(orderplaced_handle_list, world_id, amazon_fd, world_fd, 
     #    if  UGoPickup.seqnum in world_ack_list:
     #        break
     db_conn.commit()
+    mutex.release()
     print("orderplaced_handler finished")
-
+    return
+    
 def loading_status_update(loadingfinished_handle_list, world_id, amazon_fd, world_fd):
     print("in loading_status_update")
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'") 
     db_cur = db_conn.cursor()
-
+    mutex.acquire()
     for loadingfinished in loadingfinished_handle_list:
         db_cur.execute("update package set status = 'L', "
                              "where truckid = '" + str(loadingfinished.truckid) +
@@ -208,8 +230,10 @@ def loading_status_update(loadingfinished_handle_list, world_id, amazon_fd, worl
                              "' and worldid = '" + str(world_id) +"' and packageid =  "
                              + loadingfinished.pickageid)
     db_conn.commit()
+    mutex.release()
     print("loading_status_update finished")
-
+    return
+    
 #message send successfully, main thread wait for UResponses
 def loadingfinished_handler(loadingfinished_handle_list, world_id, amazon_fd, world_fd):
     print("in loadingfinished_handler")
@@ -218,6 +242,7 @@ def loadingfinished_handler(loadingfinished_handle_list, world_id, amazon_fd, wo
     db_cur = db_conn.cursor()
     loading_status_update(loadingfinished_handle_list, world_id, amazon_fd, world_fd)
     UCommands = world_ups_pb2.UCommands()
+    mutex.acquire()
     for loadingfinished in loadingfinished_handle_list:
         go_deliver = UCommands.deliveries.add()
         go_deliver.truckid = loadingfinished.truckid
@@ -243,8 +268,10 @@ def loadingfinished_handler(loadingfinished_handle_list, world_id, amazon_fd, wo
     #    if go_deliver.seqnum in world_ack_list:
     #        break
     db_conn.commit()
+    mutex.release()
     print("loadingfinished_handler finished")
-
+    return
+    
 def ups_world_receiver(UResponses, world_id, amazon_fd, world_fd):
     print("in ups_world_receiver,UResponses is:")
     print(UResponses)
@@ -284,6 +311,7 @@ def ups_world_receiver(UResponses, world_id, amazon_fd, world_fd):
             error_handler(err)
             err.clear()
     print("ups_world_receiver finished")
+    return
 
 def amazon_ups_receiver(ACommun, world_id, amazon_fd, world_fd):
     print("in amazon_ups_receiver,ACommun is:")
@@ -304,7 +332,10 @@ def amazon_ups_receiver(ACommun, world_id, amazon_fd, world_fd):
             orderplaced_handle_list.append(orderplaced)
             truck_list.append(truckid)
             send_ack_to_amazon(orderplaced.seqnum,amazon_fd)
-        orderplaced_handler(orderplaced_handle_list,world_id,amazon_fd,world_fd, truck_list)
+            print("################")
+            print(len(orderplaced_handle_list))
+            print("################")
+            orderplaced_handler(orderplaced_handle_list,world_id,amazon_fd,world_fd, truck_list)
         orderplaced_handle_list.clear()
         truck_list.clear()
     if len( ACommun.aloaded)!=0:
@@ -318,6 +349,7 @@ def amazon_ups_receiver(ACommun, world_id, amazon_fd, world_fd):
         for ack in ACommun.acks:
             amazon_ack_list.append(ack)
     print("amazon_ups_receiver finished")
+    return
 
 def recv_amazon_msg(world_id, amazon_fd, world_fd):
     print("in recv_amazon_msg")
