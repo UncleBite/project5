@@ -1,0 +1,25 @@
+{% extends "homeBase.html" %}
+{% block content %}
+{% if Certified_Request %}
+    {% for request in Certified_Request %}
+        <article class="media content-section" style="margin-right: 20%;margin-left: 20%;">
+          <div class="media-body">
+                <div class="article-metadata">
+                    <h2>Tracking Number: {{ request.packageid }}</h2>
+                    <div>
+                        <p class="article-content">Product: {{ request.product_name}}</p>
+                        <p class="article-content">Description: {{ request.description}}</p>
+                        <p class="article-content">Number of items: {{ request.count}}</p>
+                        <p class="article-content">Delievery Status: {{ request.status}}</p>
+                        <p class="article-content">Delievery location_x: {{request.location_x}}</p>
+                        <p class="article-content">Delievery location_y: {{request.location_y}}</p>
+                        <a style="position: relative; right:10px;" class="btn btn-secondary btn-sm mt-1 mb-1" href="{% url 'ups'%}">
+                            Back to homepage
+                        </a>
+                </div>
+        </article>
+    {% endfor %}
+{% else %}
+<p style="margin-top:10%; font-size:30px; color:#ffffff;text-align:center;">No Shipment11111 Info here!<a style="position:relative;left:20px;" class="btn btn-secondary btn-sm mt-1 mb-1" href="{%url 'ups'%}">Back to homepage</a>></p>>
+{% endif %}
+{% endblock content %}

@@ -1,0 +1,15 @@
+{% extends "base_generic.html" %}
+{% block content %}
+<div style="background-color: #ffffff; border-radius: 10px;">
+    <div style="margin-left: 20px; padding-top: 20px; padding-bottom: 20px;">
+        <h3>Logout Success!</h3>
+        <div class="border-top pt-3">
+            <small class="text-muted">
+                <a class="btn btn-outline-info" href="{% url 'login' %}">Log In Again</a>
+            </small>
+        </div>
+    </div>
+    
+</div>
+    
+{% endblock content %}

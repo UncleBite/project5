@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% block title %}<title>rideService</title>{% endblock %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  <!-- Add additional CSS in static file -->
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  <!-- <link href="../../static/css/style2.css" rel="stylesheet"> -->
+</head>
+<body style="margin-top: 40px;">
+    <div style="margin-left: 80px">
+        <h2 style="color: #1cd1aa; font-size: 50px;font-weight: bold">
+            Welcome To
+        </h2>
+        <h2 style="color: #ffffff; font-size: 50px;font-weight: bold">
+            Xber Ride Share System
+        </h2>
+    </div>
+    <a href="{% url 'ups' %}" class="btn btn-secondary btn-sm mt-1 mb-1" style="position: absolute; right:250px; top:100px;">
+        Homepage
+    </a>
+    {% if user.is_authenticated %}
+        <a href="{% url 'logout' %}" class="btn btn-secondary btn-sm mt-1 mb-1" style="position: absolute; right:100px; top:100px;">
+            Logout
+        </a>
+    {% endif %}
+    <div class = 'container-fluid' style="margin-top: 5%">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}" style="margin-left:20%; margin-right:20%; font-size: 30px; text-align: center">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+    </div>
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</body>
+</html>
