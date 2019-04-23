@@ -141,42 +141,45 @@ def package_db_handle(orderplaced_handle_list, world_id, amazon_fd, world_fd,tru
         userid = 'unknown'
         if order.HasField("UPSuserid"):
             userid = order.UPSuserid
-       # product = order.things.name        
-#        description = order.things.description
- #       count = order.things.count
+        # product = order.things.name        
+        # description = order.things.description
+        # count = order.things.count
         location_x = order.x
         location_y = order.y
         packageid = order.packageid
+        tmp = """update truck SET packageid = %s where worldid= %s,truckid= %s"""
+        db_cur.execute(tmp,(str(packageid),str(world_id),str(truckid)))
         for product in order.things:
             tmp = """insert into package (worldid, name, status, product_name, description, count, location_x,location_y, packageid, truckid) values(%s,%s, 'C', %s ,%s ,%s,%s,%s ,%s ,%s) """
             db_cur.execute(tmp,(str(world_id),str(userid), str(product.name),str(product.description),int(product.count),str(location_x),str(location_y),str(packageid),str(truckid)))
     db_conn.commit()
     print("in package_db_handle")
 
-def orderplaced_handler(orderplaced_handle_list, world_id, amazon_fd, world_fd):
+def orderplaced_handler(orderplaced_handle_list, world_id, amazon_fd, world_fd, truck_list):
     print("in orderplaced_handler")
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'") 
     db_cur = db_conn.cursor()
     UCommands = world_ups_pb2.UCommands()
     UCommu = ups_amazon_pb2.UCommunicate()
-    package_db_handle(orderplaced_handle_list,world_id, amazon_fd,world_fd,truckid_selector())
-   
-    for order in orderplaced_handle_list:
+    package_db_handle(orderplaced_handle_list,world_id, amazon_fd,world_fd,truck_list)
+    for i in  range (0, len(orderplaced_handle_list)):
         UGoPickup = UCommands.pickups.add()
-        UGoPickup.truckid = int(truckid_selector())
-        UGoPickup.whid = order.whid
+        UGoPickup.truckid = int(truck_list[i])
+        UGoPickup.whid = orderplaced_handle_list[i].whid
         UGoPickup.seqnum = get_seqnum()
         #edited
         UOrderPlaced = UCommu.uorderplaced.add()
-        UOrderPlaced.packageid = order.packageid
-        UOrderPlaced.truckid = int(truckid_selector())
+        UOrderPlaced.packageid = orderplaced_handle_list[i].packageid
+        UOrderPlaced.truckid = int(truck_list[i])
         UOrderPlaced.seqnum = get_seqnum()
-        tmp1= """update package set status = 'E' where truckid = %s and worldid =%s and packageid = %s"""      
-        db_cur.execute(tmp1,(str(UGoPickup.truckid),str(world_id),int(order.packageid )))
+        tmp1= """update package set status = 'E' where truckid = %s and worldid =%s and packageid = %s"""
+        db_cur.execute(tmp1,(str(UGoPickup.truckid),str(world_id),int(orderplaced_handle_list[i].packageid )))
+        print("1")
         tmp2 = """update truck set status = 'E' where truckid =  %s and worldid =%s"""
         db_cur.execute(tmp2,(str(UGoPickup.truckid), str(world_id)))
-    #while True:
+        print("2")
+        #while True:
     send_to_amazon(UCommu, amazon_fd)
     #    if UOrderPlaced.seqnum in amazon_ack_list:
     #        break
@@ -252,33 +255,32 @@ def ups_world_receiver(UResponses, world_id, amazon_fd, world_fd):
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'") 
     db_cur = db_conn.cursor()
-    while 1:
-        if len(completions) != 0 :
-            for complete in UResponses.completions:
-                completions.append(complete)
-                send_ack_to_world(complete.seqnum,world_fd)
-            completions_handler(completions)
-            completions.clear()
-        if len(delivered)!= 0:
-            for deliver in UResponses.delivered:
-                delivered.append(deliver)
-                send_ack_to_world(complete.seqnum,world_fd)
-            delivered_handler(delivered)
-            delivered.clear()
-        if UResponses.HasField("finished"):
-            print("Disconnect from world")
-            disconnect(world_fd)
-        if len(acks)!=0 :
-            for ack in UResponses.acks:
-                world_ack_list.append(ack)
-        if len(truckstatus)!=0:
-            for truck in UResponses.truckstatus:
-                truckstatus.append(truck)
-            truckstatus_handler(truckstatus)
-            truckstatus.clear()
-        if len(error)!=0:
-            for error in UResponses.error:
-                err.append(error)
+    if len(completions) != 0 :
+        for complete in UResponses.completions:
+            completions.append(complete)
+            send_ack_to_world(complete.seqnum,world_fd)
+        completions_handler(completions)
+        completions.clear()
+    if len(delivered)!= 0:
+        for deliver in UResponses.delivered:
+            delivered.append(deliver)
+            send_ack_to_world(complete.seqnum,world_fd)
+        delivered_handler(delivered)
+        delivered.clear()
+    #if UResponses.HasField("finished"):
+    #    print("Disconnect from world")
+    #    disconnect(world_fd)
+    if len(acks)!=0 :
+        for ack in UResponses.acks:
+            world_ack_list.append(ack)
+    if len(truckstatus)!=0:
+        for truck in UResponses.truckstatus:
+            truckstatus.append(truck)
+        truckstatus_handler(truckstatus)
+        truckstatus.clear()
+    if len(error)!=0:
+        for error in UResponses.error:
+            err.append(error)
             error_handler(err)
             err.clear()
     print("ups_world_receiver finished")
@@ -286,57 +288,65 @@ def ups_world_receiver(UResponses, world_id, amazon_fd, world_fd):
 def amazon_ups_receiver(ACommun, world_id, amazon_fd, world_fd):
     print("in amazon_ups_receiver,ACommun is:")
     print(ACommun)
+    truck_list = []
     orderplaced_handle_list = []
     loadingfinished_handle_list = []
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password='passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'") 
     db_cur = db_conn.cursor()
-    while 1:
-        if len(ACommun.aorderplaced)!=0:
-            #assign thread for orderplaced_handler
-            for orderplaced in ACommun.aorderplaced:
-                if(truckid_selector() == -1):
-                    continue
-                orderplaced_handle_list.append(orderplaced)
-                send_ack_to_amazon(orderplaced.seqnum,amazon_fd)
-            orderplaced_handler(orderplaced_handle_list,world_id,amazon_fd,world_fd)
-            orderplaced_handle_list.clear()
-        if len( ACommun.aloaded)!=0:
-            #only part of packages loaded, need to wait
-            for loadingfinished in ACommun.aloaded:
-                loadingfinished_handle_list.append(loadingfinished)
-                send_ack_to_amazon(loadingfinished.seqnum,amazon_fd)
-            loadingfinished_handler(loadingfinished_handle_list,world_id,amazon_fd,world_fd)
-            loadingfinished_handle_list.clear()
-        if len(ACommun.acks)!=0:
-            for ack in ACommun.acks:
-                amazon_ack_list.append(ack)
-            pass
+    
+    if len(ACommun.aorderplaced)!=0:
+        #assign thread for orderplaced_handler
+        for orderplaced in ACommun.aorderplaced:
+            truckid = truckid_selector()
+            if(truckid == -1):
+                continue
+            orderplaced_handle_list.append(orderplaced)
+            truck_list.append(truckid)
+            send_ack_to_amazon(orderplaced.seqnum,amazon_fd)
+        orderplaced_handler(orderplaced_handle_list,world_id,amazon_fd,world_fd, truck_list)
+        orderplaced_handle_list.clear()
+        truck_list.clear()
+    if len( ACommun.aloaded)!=0:
+        #only part of packages loaded, need to wait
+        for loadingfinished in ACommun.aloaded:
+            loadingfinished_handle_list.append(loadingfinished)
+            send_ack_to_amazon(loadingfinished.seqnum,amazon_fd)
+        loadingfinished_handler(loadingfinished_handle_list,world_id,amazon_fd,world_fd)
+        loadingfinished_handle_list.clear()
+    if len(ACommun.acks)!=0:
+        for ack in ACommun.acks:
+            amazon_ack_list.append(ack)
     print("amazon_ups_receiver finished")
 
 def recv_amazon_msg(world_id, amazon_fd, world_fd):
     print("in recv_amazon_msg")
     # create a thread pool to handle received messages
-    # pool = threadpool.ThreadPool(num_threads)
+    pool = ThreadPoolExecutor(5)
     while 1:
         # receive a message from Amazon and assign a thread to handle it
         message = ups_amazon_pb2.ACommunicate()
         message = recv_from_amazon(message, amazon_fd)
+        print(message)
         #amazon_msg = recv_message(amazon_fd, amz_ups_pb2.AUMessages)
-        thread1 = threading.Thread(target=amazon_ups_receiver, args=(message, world_id, amazon_fd, world_fd))
-        thread1.start()
-        thread1.join()
+        #thread1 = threading.Thread(target=amazon_ups_receiver, args=(message, world_id, amazon_fd, world_fd))
+        pool.submit(amazon_ups_receiver, message, world_id, amazon_fd, world_fd)
+        #thread1.start()
+        #thread1.join()
 
 
 # receive messages from world
 def recv_world_msg(world_id, amazon_fd, world_fd):
     print("in recv_world_msg")
     # create a thread pool to handle received messages
+    pool = ThreadPoolExecutor(5)
     while 1:
         # receive a message from Amazon and assign a thread to handle it
-        message = world_ups_pb2.UCommands()
+        message = world_ups_pb2.UResponses()
         message = recv_from_world(message, world_fd)
+        print(message)
         #world_msg = recv_message(world_fd, ups_pb2.UResponses)
-        thread1 = threading.Thread(target=ups_world_receiver, args=(message, world_id, amazon_fd, world_fd))
-        thread1.start()
-        thread1.join()
+        #thread1 = threading.Thread(target=ups_world_receiver, args=(message, world_id, amazon_fd, world_fd))
+        pool.submit(ups_world_receiver, message, world_id, amazon_fd, world_fd)
+        #thread1.start()
+        #thread1.join()
