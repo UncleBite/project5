@@ -1,9 +1,8 @@
 body {
-  background-image: url("background.jpeg");
-  background-size: 100% auto;
+  background-image: url("ups.png");
+  background-size: 110%auto;
   background-color:#000000;
   color: #333333;
-  margin-top: 5rem;
 }
 
 h1, h2, h3, h4, h5, h6 {

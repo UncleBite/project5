@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 # Create your models here.
 
+
 class package(models.Model):
     worldid = models.CharField(max_length=30,null=True,default="")
     STATUS = (
@@ -17,7 +18,7 @@ class package(models.Model):
     count = models.IntegerField()
     location_x = models.CharField(max_length=30,null=True)
     location_y = models.CharField(max_length=30,null=True)
-    packageid = models.IntegerField()
+    packageid = models.CharField(max_length=10,default="0")
     truckid = models.CharField(max_length=30,null=True,default="")
     name = models.CharField(max_length=1000, null=True,default="")
     class Meta:

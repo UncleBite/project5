@@ -12,24 +12,16 @@
 <body>
     <div class = 'container-fluid'>
         <div class="row">
-                <div class="col-md-6" style="padding-top: 100px; padding-left: 80px;">
-                    <h2 style="color: #1cd1aa; font-size: 80px;font-weight: bold">Welcome To Xber!</h2>
-                    <div style="color: #ffffff; font-size: 40px; font-weight: bold">
-                        YOUR BEST WAT TO<br/> 
-                        MOVE<br/>
-                        WORK<br/>
-                        AND<br/>
-                        SUCCEED</div>
-               </div>
-                <div class = "col-md-5" style="padding-top: 110px;">
-                    {% if messages %}
-                    {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                    {% endfor %}
-                    {% endif %}
-                    {% block content %}{% endblock %}
+            <div class = "col-md-6 col-md-offset-3" style="padding-top: 80px; padding-left: 100px;">
+                     {% if messages %}
+                     {% for message in messages %}
+                     <div class="alert alert-{{ message.tags }}">
+                         {{ message }}
+                     </div>
+                     {% endfor %}
+                     {% endif %}
+                     {% block content %}{% endblock %}
+                 </div>
                 </div>
             </div>
     </div>

@@ -18,9 +18,10 @@ db_host = "localhost"
 #world_host = "152.3.53.20"
 world_host = "localhost"
 amazon_host = "vcm-8230.vm.duke.edu"
+#amazon_host = "10.197.144.137"
 # db_port = "6666"
 db_port = "5432"
-amz_conn_port = 55559
+amazon_port = 55555
 ups_world_conn_port = 12345
 
 
@@ -64,15 +65,14 @@ def connect_world():
             ConnectionError, ConnectionAbortedError) as error:
         print(error)
         #continue
-    print("!!!!!!")
     return world_fd
 
 
 def init_world(world_fd, db_cur, db_conn):
     UConnect = world_ups_pb2.UConnect()
     UConnect.isAmazon = False
-   # UConnect.worldid = 1
-    for i in range(1,1):
+    #UConnect.worldid = 1
+    for i in range(1,3):
         car1 = UConnect.trucks.add()
         car1.id = i
         car1.x = i
@@ -83,7 +83,7 @@ def init_world(world_fd, db_cur, db_conn):
     UConnected = recv_from_world(UConnected, world_fd)
     world_id = UConnected.worldid
 
-    for i in range(1,30):
+    for i in range(1,3):
         db_cur.execute("insert into truck "
                        "(worldid, truckid, packageid, location_x,"
                        "location_y, status) values('" +
@@ -92,6 +92,9 @@ def init_world(world_fd, db_cur, db_conn):
                        'I' + "')")
     print (UConnected)
     db_conn.commit()
+    UComm = world_ups_pb2.UCommands()
+    UComm.simspeed = 50000
+    send_to_world(UComm,world_fd)
     return world_id
 
 
@@ -112,8 +115,7 @@ def connect_amazon(world_id):
         try:
             #amazon_fd.connect(('10.0.0.243', 12345))
             #amazon_fd.connect((world_host, 5678))
-            amazon_fd.connect((amazon_host, 55555))
-            print("!!!!!")
+            amazon_fd.connect((amazon_host,  amazon_port))
             message = ups_amazon_pb2.AUConnect()
             message.worldid = world_id
             send_to_amazon(message, amazon_fd)
@@ -134,12 +136,11 @@ thread2 = threading.Thread(target=recv_world_msg)
 thread2.start()
 '''
 def main():
-    print("Hello, World")
     db_cur, db_conn = connect_db()
     world_fd = connect_world()
     world_id =  init_world(world_fd, db_cur, db_conn)
     print("waiting for amazon setting up")
-    time.sleep(6)
+    time.sleep(1)
     amazon_fd = connect_amazon(world_id)
     thread1 = threading.Thread(target=recv_amazon_msg, args=(world_id, amazon_fd, world_fd))
     thread1.start()
