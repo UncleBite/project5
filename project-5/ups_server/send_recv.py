@@ -29,13 +29,17 @@ def send_ack_to_amazon(ack, amazon_fd):
     #print("sending ack to AMAZON")
     UCommu = ups_amazon_pb2.UCommunicate()
     UCommu.acks.append(ack)
-    send_to_amazon(UCommu,amazon_fd)
+    _EncodeVarint(amazon_fd.send, len(UCommu.SerializeToString()), None)
+    amazon_fd.sendall(UCommu.SerializeToString())
+
 
 def send_ack_to_world(ack, world_fd):
     #print("sending ack to WORLD")
     UCommands = world_ups_pb2.UCommands()
     UCommands.acks.append(ack)
-    send_to_world(UCommands,world_fd)
+    _EncodeVarint(worldfd.send, len(UCommands.SerializeToString()), None)
+    worldfd.sendall(UCommands.SerializeToString())
+
 
 
 def send_unack_msg_to_world():
@@ -86,18 +90,15 @@ def send_to_world(msg, worldfd):
                                "host='" + db_host + "' port='" + db_port + "'")
     db_cur = db_conn.cursor()
 
-    #if the message is not pure ack:
-    if len(msg.pickups) or len(msg.deliveries) or len(msg.queries) != 0:
-        """
-        insert message into database
-        """
-        db_cur.execute("""INSERT INTO world_ack (seqnum,message) VALUES(%s,%s);""",(msg.acks,json_msg))
-        db_conn.commit()
-        _EncodeVarint(worldfd.send, len(msg.SerializeToString()), None)
-        worldfd.sendall(msg.SerializeToString())
-    else: #send pure ack
-        _EncodeVarint(worldfd.send, len(msg.SerializeToString()), None)
-        worldfd.sendall(msg.SerializeToString())
+
+    """
+    insert message into database
+    """
+    db_cur.execute("""INSERT INTO world_ack (seqnum,message) VALUES(%s,%s);""",(msg.acks,json_msg))
+    db_conn.commit()
+    _EncodeVarint(worldfd.send, len(msg.SerializeToString()), None)
+    worldfd.sendall(msg.SerializeToString())
+
 
 def send_to_amazon(msg, amazon_fd):
     #print('msg you send to AMAZON is')
@@ -106,17 +107,15 @@ def send_to_amazon(msg, amazon_fd):
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password = 'passw0rd'"
                                "host='" + db_host + "' port='" + db_port + "'")
     db_cur = db_conn.cursor()
-    if len(msg.uorderplaced) or len(msg.uarrived) or len(msg.udelivered) != 0:
-        """
-        insert message into database
-        """
-        db_cur.execute("""INSERT INTO amazon_ack (seqnum,message) VALUES(%s,%s);""",(msg.acks,json_msg))
-        db_conn.commit()
-        _EncodeVarint(worldfd.send, len(msg.SerializeToString()), None)
-        worldfd.sendall(msg.SerializeToString())
-    else:
-        _EncodeVarint(amazon_fd.send, len(msg.SerializeToString()), None)
-        amazon_fd.sendall(msg.SerializeToString())
+
+    """
+    insert message into database
+    """
+    db_cur.execute("""INSERT INTO amazon_ack (seqnum,message) VALUES(%s,%s);""",(msg.acks,json_msg))
+    db_conn.commit()
+    _EncodeVarint(worldfd.send, len(msg.SerializeToString()), None)
+    worldfd.sendall(msg.SerializeToString())
+
 
 
 
