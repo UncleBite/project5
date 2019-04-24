@@ -2,7 +2,7 @@ from google.protobuf.internal.encoder import _EncodeVarint
 from google.protobuf.internal.decoder import _DecodeVarint32
 import world_ups_pb2
 import ups_amazon_pb2
-import protobuf_json
+from protobuf_json import json2pb, pb2json
 import json
 
 world_ack_list = []
