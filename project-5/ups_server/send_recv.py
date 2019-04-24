@@ -56,7 +56,7 @@ def send_unack_msg_to_world():
             msg = json2pb(msg, msg_json, useFieldNumber=False)
             _EncodeVarint(worldfd.send, len(msg.SerializeToString()), None)
             worldfd.sendall(msg.SerializeToString())
-        sleep(600)
+        sleep(60)
 
 def send_unack_msg_to_amazon():
     db_conn = psycopg2.connect("dbname='postgres' user='postgres' password = 'passw0rd'"
@@ -75,7 +75,7 @@ def send_unack_msg_to_amazon():
             msg = json2pb(msg, msg_json, useFieldNumber=False)
             _EncodeVarint(amazon_fd.send, len(msg.SerializeToString()), None)
             amazon_fd.sendall(msg.SerializeToString())
-        sleep(600)
+        sleep(60)
 
 
 def send_to_world(msg, worldfd):
