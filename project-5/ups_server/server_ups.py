@@ -6,7 +6,7 @@ import time
 import world_ups_pb2
 import ups_amazon_pb2
 from handle_message import recv_world_msg, recv_amazon_msg
-from send_recv import send_to_world, recv_from_world, send_to_amazon
+from send_recv import send_to_world, recv_from_world, send_to_amazon,send_unack_msg_to_amazon,send_unack_msg_to_world
 #from fill_message import fill_ups_connect, fill_ua_connect
 
 # db_host = "vcm-3838.vm.duke.edu"
@@ -33,8 +33,11 @@ def connect_db():
             db_conn = psycopg2.connect("dbname='postgres' user='postgres' password = 'passw0rd'"
                                        "host='" + db_host + "' port='" + db_port + "'")
             db_cur = db_conn.cursor()
+            db_cur.execute( "CREATE TABLE world_ack(seqnum INT PRIMARY KEY, message json )")
+            db_cur.execute( "CREATE TABLE amazon_ack(seqnum INT PRIMARY KEY, message json )")
             print("connected to the database!")
             break
+
         except psycopg2.OperationalError as error:
             print(error)
             continue
@@ -77,7 +80,7 @@ def init_world(world_fd, db_cur, db_conn):
         car1.id = i
         car1.x = i
         car1.y = i
-   
+
     send_to_world(UConnect, world_fd)
     UConnected = world_ups_pb2.UConnected()
     UConnected = recv_from_world(UConnected, world_fd)
@@ -146,7 +149,10 @@ def main():
     thread1.start()
     thread2 = threading.Thread(target=recv_world_msg, args=(world_id, amazon_fd, world_fd))
     thread2.start()
+    thread3 = threading.Thread(target=send_unack_msg_to_amazon)
+    thread3.start()
+    thread4 = threading.Thread(target=send_unack_msg_to_world)
+    thread4.start()
 
 if __name__=="__main__":
     main()
-
